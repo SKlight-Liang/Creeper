@@ -13,3 +13,9 @@ The good news is that this inspection is only done once,
 and there is no need for any human-machine verification afterwards.
 Okay, this may be a minor oversight.
 We have to admit that its anti crawling technology is very excellent.
+
+We provide the following methods:
+- `ShutterStock.py`: The main crawling module 
+- `SimilarImage.py`: The similar image search engine based on Shutterstock API
+
+Please refer to the specific program for the relevant parameter settings and usage instructions.

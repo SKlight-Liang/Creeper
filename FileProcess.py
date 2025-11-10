@@ -11,10 +11,12 @@ Function Table:
 LogMessage(Message, Type="INFO") -- Write LOGS to default log file
 GetFileNamesinDir(DirPath, SavePath=None) -> list -- Retrieve all file names in the file directory
 GetFileName(FilePath) -> str -- Return the content before the last point
+EncodeImageToBase64(ImagePath) -> str -- Encode the image to base64 string
 '''
 
 import os
 import json
+import base64
 import logging
 
 LOG_FILE = "Process.log"
@@ -64,3 +66,18 @@ def GetFileName(FilePath:str) -> str:
     except Exception as e:
         LogMessage(f"Error retrieving file name from path: {FilePath}. Error: {str(e)}", Type="ERROR")
         return ""
+
+# Encode the image to base64 string
+def EncodeImageToBase64(ImagePath:str) -> str:
+    try:
+        with open(ImagePath, "rb") as ImageFile:
+            EncodedString = base64.b64encode(ImageFile.read()).decode('utf-8')
+        return EncodedString
+        
+    except FileNotFoundError:
+        LogMessage(f"Image file not found: {ImagePath}", Type="ERROR")
+        return None
+        
+    except Exception as e:
+        LogMessage(f"Error reading image file: {ImagePath}. Error: {str(e)}", Type="ERROR")
+        return None
