@@ -14,11 +14,14 @@ The author shall not be held legally responsible for any consequences resulting 
 
 import os
 import time
+import tqdm
 import json
 import requests
 
 from FileProcess import LogMessage
 from FileProcess import EncodeImageToBase64
+
+from Creeper import DownloadImage
 
 # Time interval between requests to avoid hitting rate limits
 # Note that Shutterstock has extremely strict restrictions on free APIs
@@ -34,6 +37,10 @@ IMAGE_PATH = "InputImage.png"
 PER_PAGE = 100
 # Path to save the search results
 RESULT_PATH = "SimilarImages.json"
+
+# Rendering thumbnail URLs as real image URLs
+def RenderImageURL(URL: str) -> str:
+    return URL.replace("-450w-", "-600nw-")
 
 class ShutterstockReverseImageSearchEngine:
     # Initialize API Engine
@@ -132,6 +139,24 @@ class ShutterstockReverseImageSearchEngine:
 
         LogMessage(f"All attempts failed for image: {ImagePath}", Type="ERROR")
         return None
+    
+    # Download images according to the search result
+    def DownloadSimilarImages(self, SearchResults: dict, SaveFolder: str) -> None:
+        # Extract image information from search results
+        ImageInfos = SearchResults.get("data", [])
+
+        for Item in tqdm.tqdm(ImageInfos, desc="Downloading similar images"):
+            # Get image URL
+            ImageURL = Item["assets"]["preview"]["url"]
+            # Get image ID
+            ImageID = ImageURL.split("-")[-1].split(".")[0]
+            # Define save path
+            SavePath = os.path.join(SaveFolder, f"{ImageID}.jpg")
+            # Render real image URL
+            ImageURL = RenderImageURL(ImageURL)
+            # Download image
+            DownloadImage(ImageURL, SavePath)
+        
     
 if __name__ == "__main__":
     # Ensure API token is provided
