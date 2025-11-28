@@ -8,4 +8,6 @@ This module implements a crawler for downloading questions from zujuan.xkw.com. 
 
 For the obtained questions, the following modules can be sequentially called for parsing:
 
+- `MinerUOCR.py`: Uploads the images to MinerU for OCR processing and retrieves the files that contain the recognized text.
+
 Please refer to the specific program for the relevant parameter settings and usage instructions.
