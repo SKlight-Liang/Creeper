@@ -7,6 +7,7 @@ and other related functions. Of course, I have only listed those that I think ar
 I hope that these methods will be further supplemented in the future.
 
 Function Table:
+GetImagePathsinMD(MarkdownText: str) -> list -- Extract all image paths of all images contained in the Markdown text
 '''
 
 import re
