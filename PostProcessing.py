@@ -8,9 +8,14 @@ However, I must point out that these functions may not be applicable to other sc
 so please use them with caution.
 
 Function Table:
+OptionsOrderCorrection(QuestionMDText: str = None) -> str
+-- Correct the order of options in the question Markdown text
 '''
 
 import re
+
+from ModelInterface import ModelInterface
+from PromptTemplate import CHOICE_ORDER_JUDGE_PROMPT_TEMPLATE
 
 # Correct the order of options in the question Markdown text
 def OptionsOrderCorrection(QuestionMDText: str = None) -> str:
@@ -50,3 +55,29 @@ def OptionsOrderCorrection(QuestionMDText: str = None) -> str:
         CorrectedQuestionMDText = QuestionMDText
         
     return CorrectedQuestionMDText
+
+# Check whether the above function works correctly. 
+# That means the order of options should be correct.
+# We will use LLM to help us judge this fact.
+# 
+def OptionsOrderCheck(Question: str = None, Model: ModelInterface = None) -> dict:
+    if not Question or not Model:
+        raise ValueError("Question and Model must be provided.")
+    
+    # Construct the prompt
+    Prompt = CHOICE_ORDER_JUDGE_PROMPT_TEMPLATE.format(Question = Question)
+    # Get the model response
+    Response = Model.ModelResponse(Prompt = Prompt, MaxTokens = 50)
+    # Standardize the model's reply
+    Reply = str(Response["Response"]).strip().lower()
+
+    if "true" in Reply:
+        return {
+            "JudgeResponse": Reply,
+            "JudgeResult": True,
+        }
+    else:
+        return {
+            "JudgeResponse": Reply,
+            "JudgeResult": False,
+        }
