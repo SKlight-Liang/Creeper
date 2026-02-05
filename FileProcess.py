@@ -22,14 +22,14 @@ import logging
 LOG_FILE = "Process.log"
 # Configure logging
 logging.basicConfig(
-    filename=LOG_FILE,
-    level=logging.INFO,
-    format='[%(asctime)s] %(levelname)s: %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
+    filename = LOG_FILE,
+    level    = logging.INFO,
+    format   = '[%(asctime)s] %(levelname)s: %(message)s',
+    datefmt  = '%Y-%m-%d %H:%M:%S'
 )
 
 # Write LOGS to default log file
-def LogMessage(Message: str, Type:str="INFO"):
+def LogMessage(Message: str, Type: str = "INFO"):
     if Type == "INFO":
         logging.info(Message)
     elif Type == "WARNING":
@@ -40,7 +40,7 @@ def LogMessage(Message: str, Type:str="INFO"):
         logging.debug(Message)
     
 # Retrieve all file names in the file directory
-def GetFileNamesinDir(DirPath:str, SavePath:str=None) -> list:
+def GetFileNamesinDir(DirPath: str, SavePath: str = None) -> list:
     try:
         FileNames = os.listdir(DirPath)
         LogMessage(f"Successfully retrieved file names from directory: {DirPath}")
@@ -56,7 +56,7 @@ def GetFileNamesinDir(DirPath:str, SavePath:str=None) -> list:
         return []
     
 # Return the content before the last point
-def GetFileName(FilePath:str) -> str:
+def GetFileName(FilePath: str) -> str:
     try:
         FilePath = os.path.basename(FilePath)
         FileName = os.path.splitext(FilePath)[0]
@@ -68,7 +68,7 @@ def GetFileName(FilePath:str) -> str:
         return ""
 
 # Encode the image to base64 string
-def EncodeImageToBase64(ImagePath:str) -> str:
+def EncodeImageToBase64(ImagePath: str) -> str:
     try:
         with open(ImagePath, "rb") as ImageFile:
             EncodedString = base64.b64encode(ImageFile.read()).decode('utf-8')

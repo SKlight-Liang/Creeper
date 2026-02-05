@@ -11,8 +11,10 @@ so please confirm that the model supports OpenAI interfaces.
 
 Function Table:
 ModelInterface(BaseURL: str, ModelName: str, APIToken: str) -- Initialize the model interface
-ModelResponse(Prompt: str, ImageURLs: list) -> dict -- Get model response based on prompt and images
-ConcurrentModelAPI(Prompts: list, BatchImageURLs: list, Information: list, Concurrency: int, SaveJsonlPath: str) -> list 
+ModelResponse(Prompt: str, ImageURLs: list, Temperature: float = 0.0, MaxTokens: int = 2048) -> dict 
+-- Get model response based on prompt and images
+ConcurrentModelAPI(Prompts: list, BatchImageURLs: list, Information: list, Temperature: float = 0.0, 
+MaxTokens: int = 2048, Concurrency: int, SaveJsonlPath: str) -> list 
 -- Concurrently call interface for a batch of prompts and images
 '''
 
@@ -54,7 +56,9 @@ class ModelInterface:
 
     # Here ImageURLs supports images that are publicly accessible via URLs or base64 encoded images
     # The format of base64 encoded images should be like: "data:image/png;base64,{Base64String}"
-    def ModelResponse(self, Prompt: str = "", ImageURLs: list = []) -> dict:
+    def ModelResponse(self, Prompt: str = "", ImageURLs: list = [],
+                        Temperature: float = 0.0, MaxTokens: int = 2048          
+    ) -> dict:
         # Construct contents for the model
         Contents = []
 
@@ -85,7 +89,9 @@ class ModelInterface:
         # Call the model API
         Response = self.Client.chat.completions.create(
             model = self.ModelName,
-            messages = [Message]
+            messages = [Message],
+            temperature = Temperature,
+            max_tokens = MaxTokens
         )
 
         # Extract the model's reply, including model reponse and thinking process if available
@@ -111,22 +117,25 @@ class ModelInterface:
     # Here we provide an output file interface here to save the results to a jsonl file 
     # The writing process is real-time and appended to avoid data loss.
     def ConcurrentModelAPI(self, 
-        Prompts: list = [], BatchImageURLs: list = [], Information: list = [], 
+        Prompts: list = [], BatchImageURLs: list = [], Information: list = [],
+        Temperature: float = 0.0, MaxTokens: int = 2048, 
         Concurrency: int = 32, SaveJsonlPath: str = None) -> list:
 
         # Store all results
         Results = []
 
         with ThreadPoolExecutor(max_workers=Concurrency) as Executor:
-            Futures = []
+            FutureToIdx = {}
             # Submit tasks to the executor
             for idx, Prompt in enumerate(Prompts):
                 ImageURLs = BatchImageURLs[idx] if idx < len(BatchImageURLs) else []
-                Futures.append(Executor.submit(self.ModelResponse, Prompt, ImageURLs))
+                Future = Executor.submit(self.ModelResponse, Prompt, ImageURLs, Temperature, MaxTokens)
+                FutureToIdx[Future] = idx
 
             # Process completed futures
-            for idx, Future in enumerate(tqdm(as_completed(Futures), total=len(Futures), desc="Processing")):
+            for Future in tqdm(as_completed(FutureToIdx.keys()), total=len(FutureToIdx), desc="Processing"):
                 Result = Future.result()
+                idx = FutureToIdx[Future]
                 
                 # Add additional information if provided
                 if Information and idx < len(Information):
