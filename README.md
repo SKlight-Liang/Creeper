@@ -6,6 +6,6 @@ This is a modular crawler framework that can adapt to different websites for dow
 
 ### New Features
 
-Latest Update ID: `644D2B3F7D41ABB24D4688E445819B10`
-- Added a new function for image similarity comparison based on CLIP image embeddings. 
-- We will soon incorporate a checking procedure for the comparison results of image similarity.
+Latest Update ID: `aa4bd194d2d7ef23dc75f6abed801d124025f7ce01750ece1d6fff79cc4bb406`
+- Added checking procedure for the comparison results of image similarity.
+- Added cache ignoring procedure in the chrome simulator.

@@ -46,6 +46,16 @@ ChromeOptions.add_argument("--disable-blink-features=AutomationControlled")
 ChromeOptions.add_experimental_option("excludeSwitches", ["enable-automation"])
 ChromeOptions.add_experimental_option('useAutomationExtension', False)
 
+# Set the webpage to open in incognito mode to avoid 
+ChromeOptions.add_argument("--incognito")
+# We have to note that some websites may detect incognito mode and block access.
+# In that case, maybe you could try to remove the incognito mode and use following methods to clear cache:
+# ChromeOptions.add_argument("--disable-application-cache")
+# ChromeOptions.add_argument("--disable-offline-load-stale-cache")
+# ChromeOptions.add_argument("--disk-cache-size=0")
+# ChromeOptions.add_argument("--disable-background-networking")
+# ChromeOptions.add_argument("--aggressive-cache-discard")
+
 # Set more realistic User-Agent and browser fingerprint
 ChromeOptions.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36')
     
