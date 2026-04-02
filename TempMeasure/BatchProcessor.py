@@ -22,6 +22,8 @@ FileFormatStandardization(ProcessedJSONPath: str) -> None
 -- Standardize file formats for later processing
 ExtractQuestionAndBankIDs(InputJSONPath: str, RecordJSONPath: str) -> int
 -- Extract question IDs and bank IDs for all questions in a given question set
+DivideQuestionsByLLMJudgement(InputJSONPath: str, RecordJSONPath: str) -> list
+-- Divide the questions into two parts according to the judgement results of the LLM
 '''
 
 import os
@@ -53,7 +55,7 @@ def ExtractQuestionIDs(InputJSONLPath: str = None, SaveFolder: str = None, Outpu
         os.makedirs(SaveFolder)
 
     if not os.path.exists(InputJSONLPath):
-        LogMessage(f"Input JSONL file does not exist: {InputJSONLPath}", Type="Error")
+        LogMessage(f"Input JSONL file does not exist: {InputJSONLPath}", Type="ERROR")
         return []
 
     # Load the input JSONL file
@@ -105,11 +107,11 @@ def ExtractQuestionIDs(InputJSONLPath: str = None, SaveFolder: str = None, Outpu
 # The input files should just contain a list of questionIDs
 def ExtractMissingQuestionIDs(FirstJSONPath: str = None, SecondJSONPath: str = None) -> list:
     if not os.path.exists(FirstJSONPath):
-        LogMessage(f"First JSON file does not exist: {FirstJSONPath}", Type="Error")
+        LogMessage(f"First JSON file does not exist: {FirstJSONPath}", Type="ERROR")
         return []
 
     if not os.path.exists(SecondJSONPath):
-        LogMessage(f"Second JSON file does not exist: {SecondJSONPath}", Type="Error")
+        LogMessage(f"Second JSON file does not exist: {SecondJSONPath}", Type="ERROR")
         return []
 
     # Load the first JSON file
@@ -133,7 +135,7 @@ def ExtractMissingQuestionIDs(FirstJSONPath: str = None, SecondJSONPath: str = N
 # { "GoodQuestionIDs": [ ["1", ...], ["2", ...], ... ] }
 def FileFormatStandardization(ProcessedJSONPath: str = None) -> None:
     if not os.path.exists(ProcessedJSONPath):
-        LogMessage(f"Processed JSON file does not exist: {ProcessedJSONPath}", Type="Error")
+        LogMessage(f"Processed JSON file does not exist: {ProcessedJSONPath}", Type="ERROR")
         return
     
     # Load the processed JSON file
@@ -158,7 +160,7 @@ def FileFormatStandardization(ProcessedJSONPath: str = None) -> None:
 # The function will return the total number of unique question IDs in the list.
 def ExtractQuestionAndBankIDs(InputJSONPath: str = None, RecordJSONPath: str = None) -> int:
     if not os.path.exists(InputJSONPath):
-        LogMessage(f"Input JSON file does not exist: {InputJSONPath}", Type="Error")
+        LogMessage(f"Input JSON file does not exist: {InputJSONPath}", Type="ERROR")
         return 0
     
     # Load the input JSON file
@@ -198,3 +200,81 @@ def ExtractQuestionAndBankIDs(InputJSONPath: str = None, RecordJSONPath: str = N
 
     LogMessage(f"Extracted {len(AllQuestionBankIDs)} unique question and bank ID pairs.", Type="INFO")
     return len(AllQuestionBankIDs)
+
+# Divide the questions into two parts according to the judgement results of the LLM.
+# The output contains 2 list of tuples like: 
+# { "GoodQuestionIDs": [ (QuestionID1, BankID1), (QuestionID2, BankID2), ... ],
+#   "BadQuestionIDs": [ (QuestionID3, BankID3), (QuestionID4, BankID4), ... ] }
+# We will add unique question IDs into each parts, so the original information in the output file will be preserved.
+# Additionally, this function will ensure that one (questionID, bankID) pair will not appear in both parts.
+# In order to make this function work properly, your input JSON file must contain following fields:
+# {
+#     "QuestionID": "1",
+#     "BankID": "1",
+#     "LLMJudgeResult": 1/0
+#     ...
+# }
+# You will receive the total number of questions in each part as the return value of this function.
+def DivideQuestionsByLLMJudgement(InputJSONPath: str = None, RecordJSONPath: str = None) -> list:
+    GoodQuestionIDs = []
+    BadQuestionIDs = []
+    QuestionIDSet = set()
+    
+    # Check whether the output file exists. If so, we will load the existing records first.
+    if os.path.exists(RecordJSONPath):
+        with open(RecordJSONPath, "r", encoding="utf-8") as recordfile:
+            ExistingRecords = json.load(recordfile)
+            
+        if "GoodQuestionIDs" not in ExistingRecords or "BadQuestionIDs" not in ExistingRecords:
+            LogMessage(f"Record JSON file format is incorrect: {RecordJSONPath}", Type="ERROR")
+
+        GoodQuestionIDs = ExistingRecords.get("GoodQuestionIDs", [])
+        BadQuestionIDs  = ExistingRecords.get("BadQuestionIDs", [])
+
+        # Add existing question IDs to the set to avoid duplicates
+        for item in GoodQuestionIDs:
+            QuestionID, BankID = item[0], item[1]
+            QuestionIDSet.add((QuestionID, BankID))
+        for item in BadQuestionIDs:
+            QuestionID, BankID = item[0], item[1]
+            QuestionIDSet.add((QuestionID, BankID))
+
+    # Load the input JSON file
+    if not os.path.exists(InputJSONPath):
+        LogMessage(f"Input JSON file does not exist: {InputJSONPath}", Type="ERROR")
+        return [len(GoodQuestionIDs), len(BadQuestionIDs)]
+    with open(InputJSONPath, "r", encoding="utf-8") as infile:
+        Data = json.load(infile)
+        
+    # Iterate each question in the data
+    for Question in Data:
+        QuestionID   = Question.get("QuestionID", "")
+        BankID       = Question.get("BankID", "")
+        LLMJudgement = Question.get("LLMJudgeResult", 0)
+
+        # Check if the (QuestionID, BankID) pair has already been recorded
+        # If it has been recorded, we will skip this question to avoid duplicates.
+        if (QuestionID, BankID) in QuestionIDSet:
+            LogMessage(f"QuestionID {QuestionID} with BankID {BankID} has already been recorded. Skipping.", Type="WARNING")
+            continue
+        # Add the (QuestionID, BankID) pair to the set to avoid duplicates in future iterations
+        QuestionIDSet.add((QuestionID, BankID))    
+        
+        # Based on the LLM judgement, we will add the question to the corresponding list
+        if LLMJudgement == 1:
+            GoodQuestionIDs.append((QuestionID, BankID))
+        else:
+            BadQuestionIDs.append((QuestionID, BankID))
+
+    # Prepare the output data
+    OutputData = {
+        "GoodQuestionIDs": GoodQuestionIDs,
+        "BadQuestionIDs": BadQuestionIDs
+    }
+
+    # Overwrite the record file with the updated lists
+    with open(RecordJSONPath, "w", encoding="utf-8") as recordfile:
+        json.dump(OutputData, recordfile, ensure_ascii=False, indent=4)
+
+    LogMessage(f"Divided questions into {len(GoodQuestionIDs)} good and {len(BadQuestionIDs)} bad.", Type="INFO")
+    return [len(GoodQuestionIDs), len(BadQuestionIDs)]

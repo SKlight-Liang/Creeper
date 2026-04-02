@@ -26,11 +26,13 @@ RenderImageURL(ServerBaseURL: str = SERVERURL, ImagePath: str = None) -> str -- 
 UploadImagetoMinerU(ImageURL: str = None, Retries: int = 3) -> str -- Upload image to MinerU and get the OCR task ID
 GetOCRResURLfromMinerU(TaskID: str, Retries: int = 3) -> str -- Retrieve the URL of the OCR result ZIP file from MinerU
 RetrieveOCRResult(TaskID: str, SavePath: str, Retries: int = 3) -> bool -- Get the OCR result content from MinerU
+ConstructOCRResult(LayoutJSONPath: str = None) -> str -- Construct the OCR result from the layout JSON file
 '''
 
 import os
 import re
 import time
+import json
 import zipfile
 import requests
 
@@ -226,3 +228,92 @@ def RetrieveOCRResult(TaskID: str, SavePath: str = DEFAULT_SAVE_PATH, Retries: i
             continue
 
     return False
+
+# The "full.md" extracted in the previous program is the OCR result of the image.
+# You can use the following method to read the contents of the file:
+# with open(os.path.join(SavePath, "full.md"), "r", encoding="utf-8") as f:
+#     OCRResult = f.read()
+
+# But in some special cases, there may be some issues with the OCR result, 
+# such as some text being recognized as headers,
+# which may lead to the loss of this part of the data in the final recognition result.
+# Sometimes minerU may regard some text as images, resulting in statements describing the images in the OCR results. 
+# For the latter issue, although we can determine whether there is a problem 
+# through GetImagePathsinMD function in MarkdownProcess.py, we are unable to recover the lost data.
+# Therefore, we have to abandon these questions.
+# For the former issue, a great idea is to construct the OCR result from the layout.json file, 
+# which contains the position and content of each text block. The following function could achieve this goal.
+# NOTE: In this constructor, the code describing the image will be directly discarded. So do not worry.
+def ConstructOCRResult(LayoutJSONPath: str = None) -> str:
+    # If no layout JSON path is provided or the file does not exist, return None
+    if LayoutJSONPath is None or not os.path.exists(LayoutJSONPath):
+        LogMessage("No layout JSON path provided or file does not exist for OCR result construction.", Type="ERROR")
+        return None
+
+    # Read the layout JSON file
+    with open(LayoutJSONPath, "r", encoding="utf-8") as f:
+        LayoutData = json.load(f)
+
+    PageMarkdowns = []
+
+    # Iterate through each page in the layout data
+    for Page in LayoutData.get("pdf_info", []):
+        Blocks = (
+            list(Page.get("para_blocks", []))
+            + list(Page.get("discarded_blocks", []))
+        )
+
+        # Sort the blocks by their index, 
+        # which is assigned by the OCR model based on their positional relationship on the page
+        Blocks.sort(key=lambda b: b.get("index", 0))
+
+        # Construct the OCR result for the current page by concatenating the Markdown text of each block
+        BlockTexts = []
+        for Block in Blocks:
+            MarkdownText = ""
+
+            # Get the type and lines of the block, and construct the Markdown text for the block based on its type
+            BlockType = Block.get("type", "text")
+            Lines     = Block.get("lines", [])
+
+            # For interline_equation blocks, 
+            # we directly take the content of the first span as the formula content and wrap it with $$...$$
+            if BlockType == "interline_equation":
+                for Line in Lines:
+                    for Span in Line.get("spans", []):
+                        MarkdownText = Span.get("content", "").strip()
+                        if MarkdownText:
+                            break
+                    if MarkdownText:
+                        break
+
+                MarkdownText = f"$$\n{MarkdownText}\n$$"
+
+            # For text, header and other types of blocks, we concatenate the spans line by line,
+            # and wrap the inline equations with $...$
+            else:
+                LineTexts = []
+                for Line in Lines:
+                    SpanTexts = []
+                    for Span in Line.get("spans", []):
+                        SpanType = Span.get("type", "text")
+                        Content  = Span.get("content", "")
+
+                        # If the span is an inline equation, wrap it with $...$, otherwise keep it as is
+                        if SpanType == "inline_equation":
+                            SpanTexts.append(f"${Content}$")
+                        else:
+                            SpanTexts.append(Content)
+
+                    LineTexts.append("".join(SpanTexts))
+
+                MarkdownText = "\n".join(LineTexts)
+
+            MarkdownText = MarkdownText.strip()
+            if MarkdownText:
+                BlockTexts.append(MarkdownText)
+
+        # Join the Markdown text of all blocks in the current page with two newlines as separators
+        PageMarkdowns.append("\n\n".join(BlockTexts))
+
+    return "\n\n---\n\n".join(PageMarkdowns)

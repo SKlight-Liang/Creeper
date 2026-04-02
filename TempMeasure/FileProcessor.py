@@ -16,6 +16,8 @@ The author shall not be held legally responsible for any consequences resulting 
 Function Table:
 MoveFolders(FolderNames: str, SourcePath: str, TargetPath: str) -> None
 -- Move specified folders from source path to target path
+SplitQuestionFolders(RecordJSONPath: str, QuestionFolders: str, SaveFolder: str) -> None
+-- Split question folders based on the records
 '''
 
 import os
@@ -29,7 +31,7 @@ from FileProcess import LogMessage
 # And we want to move it to: TargetPath/FolderName
 def MoveFolders(FolderNames: str = None, SourcePath: str = None, TargetPath: str = None) -> None:
     if not os.path.exists(FolderNames):
-        LogMessage(f"Folder names JSON file does not exist: {FolderNames}", Type="Error")
+        LogMessage(f"Folder names JSON file does not exist: {FolderNames}", Type="ERROR")
         return
     
     # Load the folder names from the JSON file
@@ -50,3 +52,58 @@ def MoveFolders(FolderNames: str = None, SourcePath: str = None, TargetPath: str
             SuccessCount += 1
 
     LogMessage(f"Moved {SuccessCount} folders to {TargetPath}", Type="INFO")
+
+# Based on the running results of the DivideQuestionsByLLMJudgement() function in BatchProcessor.py,
+# we want to divide the question into two parts.
+# Each question corresponds to a folder named with its QuestionID.
+# Our task is to move these folders into two separate folders named "GoodQuestions" and "BadQuestions".
+# NOTE: We will move the folders instead of copying them, so please be cautious when using this function.
+def SplitQuestionFolders(RecordJSONPath: str = None, QuestionFolders: str = None, SaveFolder: str = None) -> None:
+    # Check whether the necessary paths exist
+    if not os.path.exists(RecordJSONPath):
+        LogMessage(f"Record JSON file does not exist: {RecordJSONPath}", Type="ERROR")
+        return
+    if not os.path.exists(QuestionFolders):
+        LogMessage(f"Question folders path does not exist: {QuestionFolders}", Type="ERROR")
+        return
+    if not os.path.exists(SaveFolder):
+        os.makedirs(SaveFolder)
+
+    # Load the record JSON file
+    with open(RecordJSONPath, "r", encoding="utf-8") as recordfile:
+        Data = json.load(recordfile)
+    GoodQuestionIDs = Data.get("GoodQuestionIDs", [])
+    BadQuestionIDs  = Data.get("BadQuestionIDs", [])
+
+    # Prepare paths for good and bad question folders
+    GoodQuestionsFolder = os.path.join(SaveFolder, "GoodQuestions")
+    BadQuestionsFolder  = os.path.join(SaveFolder, "BadQuestions")
+
+    if not os.path.exists(GoodQuestionsFolder):
+        os.makedirs(GoodQuestionsFolder)
+    if not os.path.exists(BadQuestionsFolder):
+        os.makedirs(BadQuestionsFolder)
+
+    # Move good question folders
+    for item in GoodQuestionIDs:
+        QuestionID, BankID = item[0], item[1]
+        SourceFolder = os.path.join(QuestionFolders, QuestionID)
+        DestinationFolder = os.path.join(GoodQuestionsFolder, QuestionID)
+
+        if os.path.exists(SourceFolder):
+            os.rename(SourceFolder, DestinationFolder)
+            LogMessage(f"Moved folder {SourceFolder} to {DestinationFolder}", Type="INFO")
+        else:
+            LogMessage(f"Source folder does not exist: {SourceFolder}", Type="WARNING")
+
+    # Move bad question folders
+    for item in BadQuestionIDs:
+        QuestionID, BankID = item[0], item[1]
+        SourceFolder = os.path.join(QuestionFolders, QuestionID)
+        DestinationFolder = os.path.join(BadQuestionsFolder, QuestionID)
+
+        if os.path.exists(SourceFolder):
+            os.rename(SourceFolder, DestinationFolder)
+            LogMessage(f"Moved folder {SourceFolder} to {DestinationFolder}", Type="INFO")
+        else:
+            LogMessage(f"Source folder does not exist: {SourceFolder}", Type="WARNING")

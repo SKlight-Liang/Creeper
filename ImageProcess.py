@@ -8,6 +8,8 @@ So I gathered and encapsulated some common image processing functions here.
 Hope these functions can help you in your work and give you some inspiration.
 
 Function Table:
+AddWhiteBorder(ImagePath: str, BorderSize: int, SavePath: str = None) -> Image.Image
+-- Add white border around the image.
 '''
 
 from PIL import Image
