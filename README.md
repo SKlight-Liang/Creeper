@@ -9,5 +9,7 @@ This module implements a crawler for downloading questions from zujuan.xkw.com. 
 For the obtained questions, the following modules can be sequentially called for parsing:
 
 - `MinerUOCR.py`: Uploads the images to MinerU for OCR processing and retrieves the files that contain the recognized text.
+- `PostProcess.py`: Post-processes the OCR results to obtain the final question text.
+- `QuestionValidator.py`: Submit the obtained question text to the designated model for testing, and determine whether the model can answer the question correctly.
 
 Please refer to the specific program for the relevant parameter settings and usage instructions.

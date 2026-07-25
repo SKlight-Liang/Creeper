@@ -14,6 +14,8 @@ OptionsOrderCheck(Question: str = None, Model: ModelInterface = None) -> dict
 -- Check whether the above function works correctly, which means the order of options should be correct.
 ExtractAnswer(AnswerMDText: str = None) -> str
 -- Extract answer from the question Markdown text. 
+ChoicesFormatter(Choices: list = None) -> str
+-- Format the choices into a string.
 '''
 
 import re
@@ -185,3 +187,22 @@ def ExtractAnswer(AnswerMDText: str = None, IsMultiChoice: bool = False) -> str:
     Analysis = "\n".join(Details)
 
     return Answer, Analysis
+
+# In some problems annotated by human experts, 
+# the options of the question may sometimes be organized in a list, like:
+# ["Option A", "Option B", "Option C", "Option D", ...]
+# We need to convert this list into a Markdown text format to ensure that 
+# the question can be correctly recognized by the model.
+def ChoicesFormatter(Choices: list = None) -> str:
+    FormatResult = ""
+    if not Choices:
+        return FormatResult
+    
+    # The format of the options is usually like:
+    # A. Option A
+    # B. Option B
+    # ...
+    for Idx, Choice in enumerate(Choices):
+        OptionLetter = f"{chr(65 + Idx)}. {Choice}\n"
+        FormatResult += OptionLetter
+    return FormatResult

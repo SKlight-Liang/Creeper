@@ -18,6 +18,7 @@ import os
 import json
 import base64
 import logging
+import mimetypes
 
 LOG_FILE = "Process.log"
 # Configure logging
@@ -67,11 +68,18 @@ def GetFileName(FilePath: str) -> str:
         LogMessage(f"Error retrieving file name from path: {FilePath}. Error: {str(e)}", Type="ERROR")
         return ""
 
-# Encode the image to base64 string
+# Encode the image to Base64 string
 def EncodeImageToBase64(ImagePath: str) -> str:
     try:
         with open(ImagePath, "rb") as ImageFile:
             EncodedString = base64.b64encode(ImageFile.read()).decode('utf-8')
+
+        # Convert Base64 encoding into a form that the model can understand
+        MimeType, _ = mimetypes.guess_type(ImagePath)
+        if not MimeType or not MimeType.startswith("image/"):
+            MimeType = "image/jpeg"
+        EncodedString = f"data:{MimeType};base64,{EncodedString}"
+        
         return EncodedString
         
     except FileNotFoundError:
