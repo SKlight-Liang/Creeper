@@ -31,17 +31,19 @@ from tqdm import tqdm
 
 # Universal model calling interface
 class ModelInterface:
-    def __init__(self, BaseURL: str = None, ModelName: str = None, APIToken: str = None):
+    def __init__(self, BaseURL: str = None, ModelName: str = None, APIToken: str = None, TimeOut: int = 1800):
         self.BaseURL = BaseURL
         self.ModelName = ModelName
         self.APIToken = APIToken
+        self.TimeOut = TimeOut
 
         if not all([self.BaseURL, self.ModelName, self.APIToken]):
             raise ValueError("BaseURL, ModelName, and APIToken must be provided.")
         
         self.Client = OpenAI(
             base_url = self.BaseURL,
-            api_key = self.APIToken
+            api_key  = self.APIToken,
+            timeout  = self.TimeOut
         )
         
         # Add a lock for thread-safe file writing
